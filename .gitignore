@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# 本地构建产物 / 日志
+build.log
+*.log
+.DS_Store
+Thumbs.db
+
+# 编辑器 / 临时文件
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# 注意：.nojekyll、articles.csv、index.html、zaker-news.html 都是交付物，不要忽略

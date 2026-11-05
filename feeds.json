@@ -1,0 +1,62 @@
+{
+  "note": "6 个公开 RSS 源。build.py 联网抓取时读取本文件；enabled=false 的源会被跳过。",
+  "updated_at": "2026-11-05",
+  "feeds": [
+    {
+      "id": "sspai",
+      "name": "少数派",
+      "url": "https://sspai.com/feed",
+      "type": "rss",
+      "channels": "科技|生活|推荐",
+      "enabled": true
+    },
+    {
+      "id": "infoq",
+      "name": "InfoQ 中文",
+      "url": "https://www.infoq.cn/feed",
+      "type": "rss",
+      "channels": "科技|推荐",
+      "enabled": true
+    },
+    {
+      "id": "solidot",
+      "name": "Solidot",
+      "url": "https://www.solidot.org/index.rss",
+      "type": "rss",
+      "channels": "科技|国际|推荐",
+      "enabled": true
+    },
+    {
+      "id": "ruanyf",
+      "name": "阮一峰的网络日志",
+      "url": "https://www.ruanyifeng.com/blog/atom.xml",
+      "type": "rss",
+      "channels": "科技",
+      "enabled": true
+    },
+    {
+      "id": "gcores",
+      "name": "机核",
+      "url": "https://www.gcores.com/rss",
+      "type": "rss",
+      "channels": "娱乐|推荐",
+      "enabled": true
+    },
+    {
+      "id": "zaobao",
+      "name": "联合早报 · 即时中国",
+      "url": "https://plink.anyfeeder.com/zaobao/realtime/china",
+      "type": "rss",
+      "channels": "国际",
+      "enabled": true
+    },
+    {
+      "id": "huxiu",
+      "name": "虎嗅网",
+      "url": "https://www.huxiu.com/rss/0.xml",
+      "type": "rss",
+      "channels": "财经|科技",
+      "enabled": false
+    }
+  ]
+}

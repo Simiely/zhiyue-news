@@ -1,0 +1,61 @@
+# CHANGELOG.md
+
+按版本分节，不拆分。版本号为文档/功能迭代标记，日期均为 2026-11-05。
+
+## v1.8.0 · 按单项目规范重组文档并推送 GitHub
+
+- 按 [knowledge-base 单项目规范](https://github.com/Simiely/knowledge-base/tree/main/%E6%A8%A1%E6%9D%BF%E5%8D%95%E9%A1%B9%E7%9B%AE%E8%A7%84%E8%8C%83) 建立四件套：`README.md` / `AGENTS.md` / `DEVELOPMENT.md` / `CHANGELOG.md`
+- `docs/` 生长式拆分：使用指南、架构说明、8 篇一坑一篇的问题记录 + 索引
+- `AGENTS.md` 顶部写入文档基线（日期 + commit hash），支持 `git diff <基线hash> HEAD`
+- 创建公开仓库 `Simiely/zhiyue-news` 并推送全部产物；启用 GitHub Pages
+- 全仓隐私检查：无凭据、无个人信息、无本地绝对路径
+
+## v1.7.0 · 按钮结果预生成（零 JS 可点）
+
+- 频道 / 来源 / 字号 / 深浅色 / 紧凑 / 只看含正文 改为 `radio + label + CSS :has(:checked)`
+- 禁用 JavaScript 下多状态可同时保持（科技 + 大字 + 浅色）；不支持 `:has()` 时退化为显示全部
+- 「查看原文」在按钮上明文显示完整 URL，宿主禁止跳出时可长按复制
+- `index.html` 压到 51 KB；交互版注入同一组控件与兜底 DOM
+
+## v1.6.0 · 默认深色 + 交互版零脚本兜底
+
+- 两份页面均默认 `data-theme="dark"`，交互版 `state.theme` 默认值同步
+- 最开始的 `zaker-news.html` 注入构建期兜底 DOM：脚本能跑则 `render()` 覆盖，被拦则原样可读
+- 右上夜间模式按钮仍可切回浅色并记住选择
+
+## v1.5.0 · 零脚本静态版 + GitHub Pages 工作流
+
+- 新增 `index.html`：零 `<script>`、零 fetch、零 localStorage，内容直接写进 DOM
+- 新增 `build_static.py`、`.github/workflows/update.yml`（每 6 小时抓取重建）、`.nojekyll`
+- 调研 GitHub 生态静态 RSS 方案（gereader / llun feeds / newsnow 等），确定「构建期渲染 + Pages」路径
+
+## v1.4.0 · 离线数据包与压缩包交付
+
+- 编造数据全部清除，换成 6 个公开 RSS 真实订阅源
+- `articles.csv` 14 列；7 篇按原文段落整理的正文快照；`snapshot.csv` 溯源
+- 整份 CSV 内联进 HTML，预览 / `file://` 下零外网请求
+- 新增 `build.py`（联网抓取 + 重建内联数据）
+
+## v1.3.0 · 原文打开修复
+
+- `window.open` 统一拦截检测，被拦时给出新窗口 / 本页阅读 / 复制链接 / 标题搜索四条兜底
+- 链接规范化：解码 `&amp;`、相对地址补全、拒绝非 HTTP 协议、`guid` 不再冒充链接
+- 按标题归一化合并，实时 RSS 的真实链接补回快照条目且不产生重复
+
+## v1.2.0 · 完整全文引擎
+
+- 解析层优先取 `content:encoded / content / description` 中最长原始 HTML，白名单清洗后保留段落/小标题/引用/列表
+- 只有摘要时按需并行竞速抓取原文，Readability 式容器选择，7 秒硬上限
+- 全文仅存本机、标注来源与抓取时间；失败 5 分钟内不重试；支持粘贴全文
+
+## v1.1.0 · 刷新稳定性修复
+
+- 通道由串行改并行竞速，首个有效结果胜出并取消其余请求
+- 移除提前返回的外层 `race`，整次同步用 `Promise.all` 收敛；单源 6.8 秒 / 单次 7.5 秒硬上限
+- 加同步序号丢弃陈旧结果；失败保留上次成功内容；下拉刷新等同步结束再复位
+
+## v1.0.0 · 首版
+
+- iOS 风格移动端新闻页：大标题 + 毛玻璃导航、卡片杂志流、快讯时间线、热门榜
+- 阅读页、搜索高亮、收藏点赞、夜间模式、字号、频道订阅、底部 Tab
+- 订阅更新：CSV/JSON/RSS 导入、自动同步频率、NEW 标记与未读数

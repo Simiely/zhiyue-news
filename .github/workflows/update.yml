@@ -1,0 +1,52 @@
+name: 更新新闻快照
+
+# 构建期抓取：runner 里拉 RSS → 写 articles.csv → 生成静态 HTML → 提交回仓库。
+# 浏览器访问 Pages 时读到的已经是渲染好的 HTML，不需要任何运行时 fetch / API / 数据库。
+on:
+  schedule:
+    - cron: '17 */6 * * *'   # 每 6 小时一次（UTC，错峰避开源站限流）
+  workflow_dispatch:          # 也可在 Actions 页手动点 Run workflow
+  push:
+    paths:
+      - 'feeds.json'
+      - 'articles.csv'
+      - 'build.py'
+      - 'build_static.py'
+
+permissions:
+  contents: write             # 需要把生成的快照提交回仓库
+
+concurrency:
+  group: news-snapshot
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 抓取订阅源并生成页面
+        # 抓取失败不清空已有数据：build.py 会保留上一版 articles.csv 的正文
+        run: |
+          python3 build.py --fetch-only || echo "::warning::部分订阅源抓取失败，沿用上一版数据"
+          python3 build.py --offline
+          python3 build_static.py
+
+      - name: 提交快照
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add articles.csv index.html zaker-news.html
+          if git diff --cached --quiet; then
+            echo "没有新内容，跳过提交"
+          else
+            git commit -m "chore: 更新新闻快照 $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
