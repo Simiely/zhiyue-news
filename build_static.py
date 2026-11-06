@@ -95,13 +95,52 @@ def time_text(row: dict) -> str:
 # ============ 内容 ============
 
 def body_html(row: dict, date: str) -> str:
-    """卡片主体：标题 + 内文简介 + 在新窗口打开原文。
-    本地正文快照折叠进 <details>，只是可选补充，不再是主内容。"""
+    """v1.9.3 · 信息分层：一句摘要 → 完整内文提要 → 正文预览 → 信息网格 → 原文 → 完整快照。
+    默认「详细」全展开；「标准」只留提要；「紧凑」只留一句摘要与原文按钮。"""
     paras = [p.strip() for p in (row.get("content") or "").split("|") if p.strip()]
     link = (row.get("link") or "").strip()
     summary = (row.get("summary") or "").strip() or "该订阅源未提供摘要"
+    src = (row.get("source") or "").strip() or "未标注来源"
+    chs = row_channels(row)
+    tag = (row.get("tag") or "").strip()
 
-    brief = ('<div class="s-brief"><b>内文简介</b><p>%s</p></div>') % e(summary)
+    def para_html(x, heading="h3"):
+        return ("<%s>%s</%s>" % (heading, e(x[2:]), heading)) if x.startswith("# ") else ("<p>%s</p>" % e(x))
+
+    # 完整内文提要
+    brief = '<div class="s-brief"><b>内文提要</b><p>%s</p></div>' % e(summary)
+
+    # 正文预览：默认展示前 3 段，让卡片上有实质内容可读
+    if paras:
+        preview_n = min(3, len(paras))
+        preview = ('<div class="s-preview"><div class="s-sec-t">正文预览 · 前 %d 段 / 共 %d 段</div>'
+                   '<div class="s-preview-body">%s</div></div>') % (
+            preview_n, len(paras), "".join(para_html(x) for x in paras[:preview_n]))
+    else:
+        preview = ('<div class="s-preview empty"><div class="s-sec-t">正文预览</div>'
+                   '<div class="s-preview-body"><p>该订阅源只提供摘要，未提供正文内容；'
+                   '本页不编造正文，完整内容请点原文。</p></div></div>')
+
+    # 信息网格：所有值都来自 CSV，空值如实写「未提供」
+    words = sum(len(x.lstrip("# ")) for x in paras)
+    host = ""
+    if link:
+        try:
+            host = urllib.parse.urlparse(link).netloc.replace("www.", "") or link[:36]
+        except Exception:
+            host = link[:36]
+    cells = [
+        ("来源", src),
+        ("频道", " · ".join(chs) or "推荐"),
+        ("发布时间", time_text(row)),
+        ("正文", ("%d 段 · 约 %d 字（本地快照）" % (len(paras), words)) if paras else "未提供，仅摘要"),
+        ("原文", host or "未提供链接"),
+        ("标记", tag or "订阅"),
+    ]
+    info = ('<div class="s-info"><div class="s-sec-t">条目信息</div><div class="s-info-grid">%s</div></div>') % (
+        "".join('<div class="s-info-cell"><i>%s</i><span>%s</span></div>' % (e(k), e(v)) for k, v in cells))
+
+    # 原文主按钮
     if link:
         primary = ('<a class="s-open-primary" href="%s" target="_blank" rel="noopener noreferrer">'
                    '<span>↗ 在新窗口打开原文</span><code>%s</code></a>') % (e(link), e(link))
@@ -112,20 +151,19 @@ def body_html(row: dict, date: str) -> str:
                    'target="_blank" rel="noopener noreferrer"><span>⌕ 按标题搜索原文</span>'
                    '<code>该订阅源未提供原文链接</code></a>') % e(q)
         nolink = ('<div class="s-nolink">该订阅源未提供原文链接，同步成功后会自动补齐；'
-                  '本页只显示真实摘要，不编造正文。上方可按标题搜索原文。</div>')
+                  '本页只显示真实信息，不编造正文与链接。</div>')
 
+    # 完整快照仍折叠，避免单卡过长
     if paras:
-        parts = []
-        for x in paras:
-            parts.append("<h2>%s</h2>" % e(x[2:]) if x.startswith("# ") else "<p>%s</p>" % e(x))
-        snap = ('<details class="s-snap"><summary>查看本地正文快照 · %s 抓取整理（非逐字全文）</summary>'
-                '<div class="s-snap-body">%s</div></details>') % (e(date), "".join(parts))
+        parts = "".join(para_html(x, "h2") for x in paras)
+        snap = ('<details class="s-snap"><summary>展开完整本地正文快照 · %d 段 · %s 抓取整理（非逐字全文）</summary>'
+                '<div class="s-snap-body">%s</div></details>') % (len(paras), e(date), parts)
     else:
         snap = ""
 
-    copy = ('<div class="s-copy">页面只保留<b>标题 + 内文简介</b>，不再自动抓取全文。'
+    copy = ('<div class="s-copy">信息均来自订阅源与本地快照，不编造内容。'
             '完整内容版权归原作者，请阅读原文。若宿主禁止跳出新窗口，长按复制上方地址到浏览器打开。</div>')
-    return '<div class="s-body">' + brief + primary + nolink + snap + copy + '</div>'
+    return ('<div class="s-body">' + brief + preview + info + primary + nolink + snap + copy + '</div>')
 
 
 def article_html(row, idx, chans, sources, date) -> str:
@@ -152,6 +190,8 @@ def article_html(row, idx, chans, sources, date) -> str:
                       '%s<span class="s-go">↗</span></a>') % (e(origin), e(title))
     else:
         title_html = '<div class="s-title">%s</div>' % e(title)
+    summary = (row.get("summary") or "").strip()
+    one_line = (summary[:60] + "…") if len(summary) > 60 else summary
     return ('<article class="%s" id="%s">'
             '<div class="s-kicker">%s<span class="s-open">%s</span></div>'
             '%s'
@@ -159,9 +199,9 @@ def article_html(row, idx, chans, sources, date) -> str:
             '<div class="s-meta"><span class="s-src">%s</span><span>%s</span>%s%s</div>'
             '%s</article>') % (
         " ".join(cls), e(rid), e(kicker),
-        "含本地快照" if full else "仅摘要",
+        "%d 段正文" % len([x for x in (row.get("content") or "").split("|") if x.strip()]) if full else "仅摘要",
         title_html,
-        e((row.get("summary") or "").strip()),
+        e(one_line),
         e(src or "未标注来源"), e(time_text(row)), new, badge,
         body_html(row, date))
 
@@ -183,6 +223,7 @@ def controls_html(chans, sources, rows, date) -> str:
                '<input class="sr" type="radio" name="font" id="f21">',
                '<input class="sr" type="radio" name="theme" id="tDark" checked>',
                '<input class="sr" type="radio" name="theme" id="tLight">',
+               '<input class="sr" type="checkbox" id="cMore" checked>',
                '<input class="sr" type="checkbox" id="cCompact">',
                '<input class="sr" type="checkbox" id="cFull">']
 
@@ -203,20 +244,23 @@ def controls_html(chans, sources, rows, date) -> str:
                '<label class="chip" for="f15">小字</label>'
                '<label class="chip" for="f17">标准</label>'
                '<label class="chip" for="f21">大字</label>'
+               '<label class="chip" for="cMore">详细预览</label>'
                '<label class="chip" for="cCompact">紧凑</label>'
                '<label class="chip" for="cFull">只看含正文 %d</label>' % full)
     bar.append('</div></div>')
 
-    note = ('<div class="static-note">这些按钮<b>不需要 JavaScript</b>：频道 / 来源 / 字号 / 深浅色 / 紧凑 / '
-            '只看含正文，全部由构建期预生成的状态实现。页面只保留<b>标题 + 内文简介</b>（%d 条真实订阅、'
-            '%d 篇含本地快照、%d 条带原文链接）：<b>点标题或蓝色按钮会在新窗口打开原文</b>，零脚本也生效。'
-            '若宿主禁止跳出，长按复制按钮上的完整地址到浏览器打开；本地正文快照折叠在卡片里，可选查看。</div>') % (
+    note = ('<div class="static-note">这些按钮<b>不需要 JavaScript</b>：频道 / 来源 / 字号 / 深浅色 / '
+            '详细预览 / 紧凑 / 只看含正文，全部由构建期预生成的状态实现。'
+            '<b>默认「详细预览」</b>：%d 条订阅展示完整内文提要、正文预览前 3 段与条目信息网格；'
+            '关掉它回到「标准」（只留提要），勾「紧凑」只剩一句摘要。'
+            '%d 篇含本地快照、%d 条带原文链接；<b>点标题或蓝色按钮在新窗口打开原文</b>，零脚本也生效。'
+            '若宿主禁止跳出，长按复制按钮上的完整地址到浏览器打开。</div>') % (
         len(rows), full, links)
 
     head = ('<div class="sync-bar pack-bar" style="margin:12px 16px;border-radius:12px;padding:13px 14px">'
             '<span class="ub-dot" style="background:var(--tint)"></span>'
             '<div class="sb-main"><b>静态快照已就绪 · %d 条真实订阅</b>'
-            '<small>%s 构建 · 标题 + 内文简介 · 点卡片在新窗口打开原文</small></div></div>') % (
+            '<small>%s 构建 · 完整提要 + 正文预览 + 条目信息 · 点标题打开原文</small></div></div>') % (
         len(rows), e(date))
 
     return "".join(hidden) + head + note + "".join(bar)
@@ -310,6 +354,25 @@ CARDS_CSS = """
   margin:22px 0 4px;padding-left:11px;border-left:3px solid var(--tint)}
 .s-only{font-size:13.5px;line-height:1.75;color:var(--label2);
   background:var(--bg);border-radius:10px;padding:12px 13px;margin:14px 0}
+.s-sec-t{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--tint);
+  margin:0 0 9px;text-transform:uppercase}
+.s-preview{background:var(--card);border:1px solid var(--sep);border-radius:14px;
+  padding:13px 14px;margin:10px 0}
+.s-preview-body{margin:0}
+.s-preview-body p{font-size:var(--rd-font);line-height:1.75;margin:0 0 10px;color:var(--label)}
+.s-preview-body p:last-child{margin-bottom:0}
+.s-preview-body h3{font-size:15px;font-weight:700;line-height:1.5;color:var(--label);
+  margin:2px 0 9px;padding-left:9px;border-left:3px solid var(--tint)}
+.s-preview.empty{background:var(--bg)}
+.s-preview.empty .s-preview-body p{color:var(--label2);font-size:13px}
+.s-info{margin:12px 0}
+.s-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.s-info-cell{background:var(--card);border:1px solid var(--sep);border-radius:10px;
+  padding:9px 11px;min-width:0}
+.s-info-cell i{display:block;font-style:normal;font-size:10px;color:var(--label3);
+  margin-bottom:3px;letter-spacing:.04em}
+.s-info-cell span{display:block;font-size:12px;font-weight:600;color:var(--label);
+  line-height:1.45;word-break:break-word}
 .s-title-link{display:block;text-decoration:none;color:var(--label);font-size:19px;font-weight:700;
   line-height:1.42;margin:6px 0 0;cursor:pointer}
 .s-title-link:active{opacity:.7}
@@ -355,9 +418,20 @@ def state_css(chans, sources) -> str:
         r.append("html:has(#src%d:checked) .art:not(.src%d){display:none}" % (i, i))
     # 只看含正文
     r.append("html:has(#cFull:checked) .art.no-full{display:none}")
-    # 紧凑：隐藏正文，只留标题与摘要
-    r.append("html:has(#cCompact:checked) .art .s-snap{display:none}")
-    r.append("html:has(#cCompact:checked) .art .s-copy{display:none}")
+    # 三档密度：详细（默认）/ 标准（关 cMore）/ 紧凑
+    r.append("html:has(#cMore:checked) .art .s-sum{display:none}")
+    r.append("html:has(#cMore:not(:checked)) .art .s-preview,"
+             "html:has(#cMore:not(:checked)) .art .s-info,"
+             "html:has(#cMore:not(:checked)) .art .s-snap,"
+             "html:has(#cMore:not(:checked)) .art .s-copy{display:none}")
+    r.append("html:has(#cMore:not(:checked)) .art .s-sum{display:block}")
+    r.append("html:has(#cCompact:checked) .art .s-sum{display:block}")
+    r.append("html:has(#cCompact:checked) .art .s-brief,"
+             "html:has(#cCompact:checked) .art .s-preview,"
+             "html:has(#cCompact:checked) .art .s-info,"
+             "html:has(#cCompact:checked) .art .s-snap,"
+             "html:has(#cCompact:checked) .art .s-copy,"
+             "html:has(#cCompact:checked) .art .s-nolink{display:none}")
     # 字号
     r.append("html:has(#f15:checked){--rd-font:15px}")
     r.append("html:has(#f21:checked){--rd-font:21px}")
@@ -376,7 +450,8 @@ def state_css(chans, sources) -> str:
           [("f15", 0), ("f17", 0), ("f21", 0), ("tDark", 0), ("tLight", 0)]
     for rid, _ in ids:
         r.append('html:has(#%s:checked) label[for="%s"]{background:var(--tint);color:#fff;border-color:var(--tint)}' % (rid, rid))
-    r.append('html:has(#cCompact:checked) label[for="cCompact"],'
+    r.append('html:has(#cMore:checked) label[for="cMore"],'
+             'html:has(#cCompact:checked) label[for="cCompact"],'
              'html:has(#cFull:checked) label[for="cFull"]'
              '{background:var(--tint);color:#fff;border-color:var(--tint)}')
     # 不支持 :has() 的老环境：全部文章照常显示（内容不丢）

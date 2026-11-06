@@ -482,7 +482,8 @@ def build_rows() -> tuple[list[dict], int]:
             summary = clean_text(html_to_paras(it["desc_raw"])[0] if it["desc_raw"] else "")
             if content:
                 first = next((p for p in paras if not p.startswith("# ")), "")
-                summary = (first[:68] + "…") if len(first) > 68 else first
+                # v1.9.3：不再硬截到 68 字，保留较长内文提要；页面另做分层展示
+                summary = (first[:240] + "…") if len(first) > 240 else first
             rows.append({
                 "id": stable_id(it["title"], it["link"], it["guid"], f["name"]),
                 "channels": f.get("channels", "推荐"),
