@@ -1,6 +1,6 @@
 # AGENTS.md · 项目规则
 
-> 📌 **文档基线**：2026-11-06（commit `c35c70c`）按 knowledge-base 单项目规范完成 v1.9.1（同步提速 7s→0.6s）
+> 📌 **文档基线**：2026-11-06（commit `PENDING_V192`）按 knowledge-base 单项目规范完成 v1.9.2（标题 + 简介 + 原文跳转）
 > **更新文档/代码后，请更新此行**（日期 + 新 commit hash），并在 CHANGELOG 追加版本
 
 只写代码里看不出的信息；核心约束 150 词内，细节按需 @引用。
@@ -21,6 +21,7 @@
 5. **CSV BOM 与重复 `@media` 会静默破坏结果**：读 CSV 用 `utf-8-sig`；CSS 嵌套块多写一层会让整段样式不生效。
 6. **正文 TTL 不能按"合并成功"续期**：抓不到新正文而沿用旧正文时，必须连同旧的 `fetched_at` 一起保留，否则 7 天清理永远不会触发；`link` 是永久字段，新结果没给链接要沿用旧值，绝不写空。
 7. **限流别用全局串行链**：`Promise.any` 里只要有一个通道排队 pending，整次同步就无法快速失败；排队必须可 abort、有上限，且明确失败时要立即收敛。手动点击要能取消在途自动同步，不要只弹「正在同步中」。
+8. **「点就跳出去」必须先处理宿主拦截**：预览沙箱不带 `allow-popups` 时 `window.open` 静默失败；交互版要检测拦截并弹复制/搜索/本页阅读菜单，零脚本静态版只能靠明文 URL + 普通 `<a href target="_blank" rel="noopener noreferrer">`。没有原文链接的条目给搜索兜底，绝不编造 URL。
 
 ## 约定
 
@@ -33,6 +34,7 @@
 
 ```bash
 python3 build.py --offline   # 不联网，仍落盘 CSV / 归档链接 / 清理过期正文
+python3 build.py --with-fulltext  # 恢复按需抓原文正文（默认关闭，只抓标题与简介）
 python3 build.py             # 联网重抓并重建
 python3 build.py --prune-days 14   # 改正文保留期
 python3 build_static.py      # 重建两份页面 + 注入兜底

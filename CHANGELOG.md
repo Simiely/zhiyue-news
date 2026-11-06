@@ -2,6 +2,19 @@
 
 按版本分节，不拆分。版本号为文档/功能迭代标记。
 
+## v1.9.2 · 改为「标题 + 内文简介 + 点卡片打开原文」（2026-11-06）
+
+- 用户明确「抓取不到全文也没关系」：**不再默认抓取全文**。`build.py` 的 `MAX_ARTICLE_FETCH` 默认 `0`，RSS 自带 `content:encoded` 只作折叠的「本地快照」；`--with-fulltext` 可恢复按需抓取
+- 页面不再自动触发 `loadFullText()`，`state.autoFull` 默认 `false`，打开文章不再出现 4 秒 loading
+- 交互版新增 `state.openMode`（默认 `link`）与 `handleOpen()`：**点有链接的卡片直接 `window.open` 新窗口打开原文**，不进站内阅读页；`noopener,noreferrer`
+- `openExternal` 拦截检测保留：预览沙箱弹不出新窗口时自动弹菜单（复制链接 / 按标题搜索 / 本页加载原文 / 再试），并明文显示完整 URL
+- `readerBodyHTML` 重写为「简介卡（含原文域名）+ 蓝色主按钮『↗ 在新窗口打开原文』+ ⋯ 兜底」，已有正文快照折叠进 `<details class="rd-snapshot">`，默认收起
+- 设置面板「打开文章时自动加载全文」改为「**点卡片直接打开原文**」开关，关掉可回退到站内阅读页
+- 静态版 `build_static.py`：标题包成 `<a class="s-title-link" target="_blank" rel="noopener noreferrer">`，卡片加蓝色 `s-open-primary` 按钮（印完整 URL），正文快照折叠进 `<details class="s-snap">`；紧凑模式只收起快照，不隐藏简介与主按钮
+- **无链接条目不编造 URL**：改给「⌕ 按标题搜索原文」的 Bing 链接（零脚本可点），23 条卡片每条都有可点的出路
+- 验证：静态版禁用 JS 链接属性正确；交互版点卡片新开 1 页且阅读页不打开；reader 模式无 loading；预览沙箱被拦时兜底菜单出现；紧凑模式主按钮仍可见；`articles.csv` 23 条全部有简介
+- 文档：问题记录新增第 11 篇，README / 使用指南 / 架构 / AGENTS / DEVELOPMENT 同步
+
 ## v1.9.1 · 同步提速：从 7 秒到 0.6 秒（2026-11-06）
 
 - 定位「全部请求立即 403 仍等 7 秒」根因：RSS2JSON 的**全局串行节流链**（7 源 × 1.2 s 排队）让 `Promise.any` 一直 pending，只能靠 `SYNC_BUDGET` 硬超时收尾

@@ -54,7 +54,10 @@ UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
       "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
 TIMEOUT = 12
 MAX_PER_FEED = 12
-MAX_ARTICLE_FETCH = 10
+# 默认只保留标题 + 内文简介：不再主动抓原文全文（最不稳的一段链路）。
+# RSS 自带的 content:encoded 仍会保留为「本地快照」，但页面默认折叠、不主推。
+# 想恢复按需抓全文：python3 build.py --with-fulltext
+MAX_ARTICLE_FETCH = 0
 
 START = "/* ==== INLINE_DATA_START ==== */"
 END = "/* ==== INLINE_DATA_END ==== */"
@@ -525,8 +528,14 @@ def main() -> int:
     ap.add_argument("--prune-days", type=int, default=CONTENT_TTL_DAYS,
                     help="正文快照保留天数，超过即清空正文（默认 7 天，链接永久保留）")
     ap.add_argument("--no-prune", action="store_true", help="本次跳过正文过期清理")
+    ap.add_argument("--with-fulltext", action="store_true",
+                    help="恢复按需抓取原文正文（默认关闭，只抓标题与简介）")
     args = ap.parse_args()
 
+    global MAX_ARTICLE_FETCH
+    if args.with_fulltext:
+        MAX_ARTICLE_FETCH = 10
+        log("已启用按需抓取原文正文（--with-fulltext）")
     if not CSV_FILE.exists():
         log("缺少 articles.csv")
         return 1
