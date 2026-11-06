@@ -2,6 +2,19 @@
 
 按版本分节，不拆分。版本号为文档/功能迭代标记。
 
+## v1.9.1 · 同步提速：从 7 秒到 0.6 秒（2026-11-06）
+
+- 定位「全部请求立即 403 仍等 7 秒」根因：RSS2JSON 的**全局串行节流链**（7 源 × 1.2 s 排队）让 `Promise.any` 一直 pending，只能靠 `SYNC_BUDGET` 硬超时收尾
+- 删掉全局链，改「延迟 600 ms + 独立短超时 + 可 abort 取消」；`abortableDelay` 正确清理监听，不再累积
+- 预算收紧：`SYNC_BUDGET 7500→4000`、`FEED_BUDGET 6800→3500`、`CHANNEL_TIMEOUT 5200→2600`、`FULL_TIMEOUT 7000→4000`
+- 预览 / 离线模式新增 `PREVIEW_SYNC_BUDGET=2500` 快速探测，2.5 秒无结果即停并明确提示
+- 手动点击不再被 `state.syncing` 拦下：先 `activeSyncCtl.abort()` 取消在途自动同步，再由 `syncSeq` 让旧结果作废并立即接管
+- 启动自动同步延后 1.2 秒，先把内容渲染出来
+- 新增进度反馈 `state.syncDone` + `updateSyncBar()`（只改状态条文字，不整页 render）
+- 顺手修回归：`updatesSection()` 调用了未定义的 `unreadItems()`，同步拿到新内容时会抛 `ReferenceError`
+- 实测（393×852）：全部 403 手动同步 **7009→638 ms**；全挂起 **6814→3227 ms**；预览点同步 **~7500→824 ms**；快通道成功 112 ms 无回退
+- 文档：问题记录新增第 10 篇，AGENTS / DEVELOPMENT / 使用指南 / 架构同步
+
 ## v1.9.0 · 订阅指定内容 + CSV 落盘 + 链接永久保留 + 正文 7 天清理（2026-11-06）
 
 - `feeds.json` 新增**澎湃新闻 7 条**：首页头条 / 时事 25950 / 财经 25951 / 思想 25952 / 国际 122908 / 科技 119908 走 RSSHub 路由 + 官方 JSON 热榜 `thepaper_hot`
