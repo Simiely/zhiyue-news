@@ -45,8 +45,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add articles.csv links.csv index.html zaker-news.html
-          if git diff --cached --quiet; then
-            echo "没有新内容，跳过提交"
+          # 只看数据文件是否真变了：HTML 里的构建时间戳每次都不同，
+          # 若 articles.csv / links.csv 无 diff，说明这次没抓到新内容，跳过提交。
+          if git diff --cached --quiet -- articles.csv links.csv; then
+            git restore --staged . >/dev/null 2>&1 || true
+            echo "数据无变化（HTML 仅构建时间戳更新），跳过提交"
           else
             git commit -m "chore: 更新新闻快照 $(date -u +%Y-%m-%dT%H:%MZ)"
             git push
