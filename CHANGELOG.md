@@ -1,6 +1,21 @@
 # CHANGELOG.md
 
-按版本分节，不拆分。版本号为文档/功能迭代标记，日期均为 2026-11-05。
+按版本分节，不拆分。版本号为文档/功能迭代标记。
+
+## v1.9.0 · 订阅指定内容 + CSV 落盘 + 链接永久保留 + 正文 7 天清理（2026-11-06）
+
+- `feeds.json` 新增**澎湃新闻 7 条**：首页头条 / 时事 25950 / 财经 25951 / 思想 25952 / 国际 122908 / 科技 119908 走 RSSHub 路由 + 官方 JSON 热榜 `thepaper_hot`
+- RSSHub 多实例竞速（`rsshub.rssforever.com` → `rsshub.app`），首个有效结果胜出，逐源打印失败原因
+- `articles.csv` 从 14 列扩到 **15 列**（新增 `fetched_at` 正文抓取时刻），旧数据平滑迁移
+- **每次刷新都落盘**：`prune_content → write_csv → write_links → rebuild_html`，`--offline` 同样执行
+- **原文链接永久保留**：`link` 永不被空值覆盖，另建 `links.csv`（5 列、只追加不清理、记录 `first_seen`）
+- **正文 7 天自行清理**：超过 TTL 清空 `content`、`tag` 改「快照·正文已过期」，标题 / 摘要 / 来源 / 时间 / 链接全留；支持 `--prune-days N` / `--no-prune`
+- 修复 TTL 虚假续期：沿用旧正文时连同旧 `fetched_at` 一起保留
+- 交互版新增**绑定本地 articles.csv**（File System Access API + IndexedDB），同步 / 刷新后自动写回 15 列 CSV；沙箱与 `file://` 降级为导出
+- 交互版 `HEADERS` / `toCSV` 同步 15 列，频道池加「时政 / 思想」
+- Actions 显式 `--prune-days 7` 并把 `links.csv` 纳入提交
+- 文档同步：README 新增「订阅指定内容 · 数据生命周期」，使用指南 / 架构补字段与验证矩阵，问题记录新增第 9 篇
+- 验证：澎湃热榜 JSON 与 RSSHub RSS（含 CDATA `content:encoded`）mock 解析通过；13 源全 403 时 23 条数据前后一致；8 天前正文被清、链接保留；禁用 JS / 沙箱 Blob / 真实浏览器三环境零报错
 
 ## v1.8.0 · 按单项目规范重组文档并推送 GitHub
 

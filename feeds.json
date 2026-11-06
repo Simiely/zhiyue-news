@@ -1,7 +1,67 @@
 {
-  "note": "6 个公开 RSS 源。build.py 联网抓取时读取本文件；enabled=false 的源会被跳过。",
-  "updated_at": "2026-11-05",
+  "note": "订阅清单。type=rss 直接取官方 feed；type=rsshub 用 route 拼接实例（多实例竞速，首个成功胜出）；type=thepaper_hot 走澎湃官方 JSON 接口。enabled=false 的源跳过。抓取结果统一写回 articles.csv，链接另外永久归档到 links.csv。",
+  "updated_at": "2026-11-06",
+  "rsshub_instances": [
+    "https://rsshub.rssforever.com",
+    "https://rsshub.app"
+  ],
   "feeds": [
+    {
+      "id": "thepaper-featured",
+      "name": "澎湃新闻 · 首页头条",
+      "type": "rsshub",
+      "route": "/thepaper/featured",
+      "channels": "时政|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-shibo",
+      "name": "澎湃新闻 · 时事",
+      "type": "rsshub",
+      "route": "/thepaper/channel/25950",
+      "channels": "时政|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-caijing",
+      "name": "澎湃新闻 · 财经",
+      "type": "rsshub",
+      "route": "/thepaper/channel/25951",
+      "channels": "财经|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-sixiang",
+      "name": "澎湃新闻 · 思想",
+      "type": "rsshub",
+      "route": "/thepaper/channel/25952",
+      "channels": "思想|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-guoji",
+      "name": "澎湃新闻 · 国际",
+      "type": "rsshub",
+      "route": "/thepaper/channel/122908",
+      "channels": "国际|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-keji",
+      "name": "澎湃新闻 · 科技",
+      "type": "rsshub",
+      "route": "/thepaper/channel/119908",
+      "channels": "科技|推荐",
+      "enabled": true
+    },
+    {
+      "id": "thepaper-hot",
+      "name": "澎湃新闻 · 热榜",
+      "type": "thepaper_hot",
+      "url": "https://cache.thepaper.cn/contentapi/wwwIndex/rightSidebar",
+      "channels": "时政|推荐",
+      "enabled": true
+    },
     {
       "id": "sspai",
       "name": "少数派",

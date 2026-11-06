@@ -20,6 +20,7 @@
 | JS 处理点击 | `<label>` + `radio/checkbox` + CSS `:has(:checked)`，禁用 JS 也能点 |
 | `window.open` 跳原文 | 普通 `<a href>`，按钮上直接显示完整 URL 供长按复制 |
 | 运行时抓 RSS | GitHub Actions 每 6 小时构建快照，浏览器端零请求 |
+| 数据只在内存 / localStorage | `articles.csv` 每次刷新落盘，`links.csv` 永久归档链接，正文 7 天自动清理 |
 
 ## 快速开始
 
@@ -33,15 +34,37 @@ python3 -m http.server 8000
 ```
 可用联网同步、订阅管理、全文抓取、搜索、收藏、原文跳转。`zaker-news.html` 内置零脚本兜底，脚本被拦时降级为同一份离线内容。
 
-**③ 更新数据**
+**③ 更新数据（刷新一次就落盘）**
 ```bash
-python3 build.py            # 联网重抓 RSS → 更新 articles.csv → 重建两份页面
-python3 build.py --offline  # 只改了 CSV，不联网
+python3 build.py            # 联网重抓 → 落盘 CSV → 归档链接 → 7 天清理 → 重建两份页面
+python3 build.py --offline  # 不联网，仍刷新落盘与重建
+python3 build.py --prune-days 14   # 把正文保留期改成 14 天
+python3 build.py --no-prune        # 本次跳过正文清理
 python3 build_static.py     # 只重建页面（含预生成按钮状态）
 ```
-纯 Python 标准库，无第三方依赖。抓取失败会保留上一版数据，不会清空。
+纯 Python 标准库，无第三方依赖。**每次运行都把结果写回 `articles.csv`**，新出现的原文链接追加进 `links.csv`；抓取失败保留上一版数据，不会清空。
 
 详细步骤见 [docs/使用指南.md](./docs/使用指南.md)。
+
+## 订阅指定内容 · 数据生命周期
+
+`feeds.json` 是订阅清单，**改它就能换成你想看的内容**，页面不用改：
+
+| 类型 | 写法 | 例子 |
+|---|---|---|
+| `rss` | 站点自带 feed，直接填 `url` | 少数派 `https://sspai.com/feed` |
+| `rsshub` | 填 `route`，多实例竞速 | 澎湃 `/thepaper/channel/25950`（时事） |
+| `thepaper_hot` | 澎湃官方 JSON 热榜 | `cache.thepaper.cn/contentapi/wwwIndex/rightSidebar` |
+
+已内置的澎湃路由：首页头条 `/thepaper/featured`、时事 `25950`、财经 `25951`、思想 `25952`、国际 `122908`、科技 `119908`，外加官方热榜。想加别的栏目，在 `feeds.json` 里复制一条改 `route` 即可。
+
+**三条数据规则**（这轮的重点）：
+
+1. **全量存 CSV**：`articles.csv` 15 列是唯一真相源，每次刷新落盘；页面端在 https / localhost 下还能「绑定本地 articles.csv」，同步完自动写回文件，不再只依赖 localStorage。
+2. **原文链接永久保留**：`link` 不会被空值覆盖，另外追加归档到 `links.csv`（字段 `id, title, source, link, first_seen`，只追加、不清理）。即使正文过期、条目不再出现在列表里，链接仍在台账中。
+3. **正文 7 天自行清理**：新增 `fetched_at` 记录正文抓取时刻，超过 7 天清空 `content`、`tag` 改为「快照·正文已过期」，标题 / 摘要 / 来源 / 发布时间 / 链接全部保留。口径可用 `--prune-days` 调整；抓不到新正文而沿用旧正文时，会连同旧的 `fetched_at` 一起保留，避免 TTL 被虚假续期。
+
+⚠️ 这里「7 天」按**正文抓取时刻**计时（正文是短期缓存，不是文章年龄）。若你想改成按文章发布时间计时，或想让过期条目整行删除，说一声即可调整。
 
 ## 双轨页面
 
@@ -50,7 +73,9 @@ python3 build_static.py     # 只重建页面（含预生成按钮状态）
 | [`zaker-news.html`](./zaker-news.html) | 最开始的完整交互版，已修复；默认深色，内置零脚本兜底 | 内联 JS + 兜底 DOM |
 | [`index.html`](./index.html) | 静态快照版，Pages 入口，51 KB | 零 `<script>`、零 fetch、零 localStorage |
 
-两份页面都默认 `data-theme="dark"`，都带同一组**不需要 JS 的按钮**：推荐 / 科技 / 生活 / 国际 / 娱乐 / 健康、6 个来源、深色 / 浅色 / 小字 / 标准 / 大字 / 紧凑 / 只看含正文。多个状态可同时保持。
+两份页面都默认 `data-theme="dark"`，都带同一组**不需要 JS 的按钮**：推荐 / 时政 / 科技 / 财经 / 思想 / 生活 / 国际 / 娱乐 / 健康、按来源筛选、深色 / 浅色 / 小字 / 标准 / 大字 / 紧凑 / 只看含正文。多个状态可同时保持。
+
+交互版「我的 → 数据」新增**绑定本地 articles.csv**：在 https 或 localhost 下选一次文件，之后每次同步 / 刷新自动写回；预览沙箱、`file://` 或不支持该 API 的浏览器会明确提示降级为「导出 CSV」。
 
 ## 文件结构
 
@@ -67,10 +92,11 @@ zhiyue-news/
 │       └── 索引.md
 ├── index.html           零脚本静态页
 ├── zaker-news.html      交互版
-├── articles.csv         真实数据包（14 列）
-├── news.csv             空模板
+├── articles.csv         真实数据包（15 列，唯一真相源，每次刷新落盘）
+├── links.csv            原文链接永久台账（只追加，不清理）
+├── news.csv             空模板（15 列）
 ├── snapshot.csv         抓取溯源快照
-├── feeds.json           6 个公开 RSS 源
+├── feeds.json           订阅清单（6 个原有 RSS + 澎湃 7 条）
 ├── build.py             抓取 + 重建交互版内联数据
 ├── build_static.py      生成静态页 + 预生成按钮状态 + 注入兜底
 ├── .github/workflows/update.yml   每 6 小时定时构建
@@ -90,7 +116,9 @@ zhiyue-news/
 
 ## 数据与版权
 
-- 数据来自 `feeds.json` 的 6 个公开 RSS，快照日期 2026-11-05；23 条为真实标题 / 来源 / 时间 / 链接。
+- 订阅清单 `feeds.json`：6 个原有 RSS 源 + **澎湃新闻 7 条**（首页头条 / 时事 / 财经 / 思想 / 国际 / 科技走 RSSHub 路由，热榜走澎湃官方 JSON 接口）；RSSHub 多实例竞速，首个成功胜出。
+- **原文链接永久保留**：`articles.csv` 的 `link` 列不会被空值覆盖，另外追加归档到 `links.csv`（只追加、不清理、记录首次出现日期）。
+- **正文快照 7 天自动清理**：`fetched_at` 记录抓取时刻，超过 7 天清空 `content`、把 `tag` 改为「快照·正文已过期」，标题 / 摘要 / 来源 / 时间 / 链接全部保留。可用 `--prune-days` 调整口径。
 - 7 篇正文是**按原文段落抓取整理的快照，非逐字全文**；未抓到正文的只显示真实摘要，未存链接的不编造链接。
 - 正文版权归原作者，仅作个人离线阅读，完整版请阅读原文。
 

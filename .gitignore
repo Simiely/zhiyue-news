@@ -16,4 +16,4 @@ Thumbs.db
 *.swp
 *.tmp
 
-# 注意：.nojekyll、articles.csv、index.html、zaker-news.html 都是交付物，不要忽略
+# 注意：.nojekyll、articles.csv、links.csv、index.html、zaker-news.html 都是交付物，不要忽略

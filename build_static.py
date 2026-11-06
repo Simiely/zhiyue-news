@@ -64,7 +64,7 @@ def channels_of(rows) -> list[str]:
             c = c.strip()
             if c and c not in vals:
                 vals.append(c)
-    return ordered(vals, ["推荐", "科技", "生活", "国际", "娱乐", "财经", "健康"])
+    return ordered(vals, ["推荐", "时政", "科技", "财经", "思想", "生活", "国际", "娱乐", "健康"])
 
 
 def sources_of(rows) -> list[str]:

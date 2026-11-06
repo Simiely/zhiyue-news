@@ -33,17 +33,18 @@ jobs:
           python-version: '3.11'
 
       - name: 抓取订阅源并生成页面
-        # 抓取失败不清空已有数据：build.py 会保留上一版 articles.csv 的正文
+        # 每次跑都会落盘 CSV + 归档链接 + 按 7 天 TTL 清理正文。
+        # 抓取失败不清空已有数据：merge() 保留上一版正文，links.csv 只追加。
         run: |
-          python3 build.py --fetch-only || echo "::warning::部分订阅源抓取失败，沿用上一版数据"
-          python3 build.py --offline
+          python3 build.py --fetch-only --prune-days 7 || echo "::warning::部分订阅源抓取失败，沿用上一版数据"
+          python3 build.py --offline --prune-days 7
           python3 build_static.py
 
       - name: 提交快照
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add articles.csv index.html zaker-news.html
+          git add articles.csv links.csv index.html zaker-news.html
           if git diff --cached --quiet; then
             echo "没有新内容，跳过提交"
           else
